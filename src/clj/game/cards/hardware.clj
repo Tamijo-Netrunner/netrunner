@@ -1,14 +1,15 @@
 (ns game.cards.hardware
   (:require
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [game.core.access :refer [access-bonus access-card breach-server
                              get-only-card-to-access]]
    [game.core.actions :refer [play-ability]]
    [game.core.board :refer [all-active all-active-installed all-installed]]
-   [game.core.card :refer [corp? event? facedown? get-card get-counters
-                           get-zone hardware? has-subtype? ice? in-deck? in-discard?
-                           in-hand? installed? program? resource? rezzed? runner? virus-program? faceup?]]
+   [game.core.card :refer [corp? event? facedown? faceup? get-card
+                           get-counters get-zone hardware? has-subtype? ice? in-deck?
+                           in-discard? in-hand? installed? program? resource? rezzed? runner? virus-program?]]
    [game.core.card-defs :refer [card-def]]
    [game.core.cost-fns :refer [all-stealth install-cost
                                rez-additional-cost-bonus rez-cost trash-cost]]
@@ -20,8 +21,8 @@
    [game.core.effects :refer [register-floating-effect
                               unregister-effects-for-card unregister-floating-effects]]
    [game.core.eid :refer [effect-completed make-eid make-result]]
-   [game.core.engine :refer [can-trigger? register-events
-                             register-once resolve-ability trigger-event
+   [game.core.engine :refer [can-trigger? register-events register-once
+                             resolve-ability trigger-event
                              unregister-floating-events]]
    [game.core.events :refer [event-count first-event? first-trash? no-event?
                              run-events]]
@@ -39,6 +40,7 @@
    [game.core.installing :refer [install-locked? runner-can-install?
                                  runner-can-pay-and-install? runner-install]]
    [game.core.link :refer [get-link link+]]
+   [game.core.mark :refer [identify-mark-ability]]
    [game.core.memory :refer [caissa-mu+ mu+ update-mu virus-mu+]]
    [game.core.moving :refer [mill move swap-agendas trash trash-cards]]
    [game.core.optional :refer [get-autoresolve never? set-autoresolve]]
@@ -51,8 +53,10 @@
    [game.core.runs :refer [bypass-ice end-run end-run-prevent
                            get-current-encounter jack-out make-run
                            successful-run-replace-breach total-cards-accessed]]
+   [game.core.sabotage :refer [sabotage-ability]]
    [game.core.say :refer [system-msg]]
    [game.core.servers :refer [target-server]]
+   [game.core.set-aside :refer [get-set-aside set-aside]]
    [game.core.shuffling :refer [shuffle!]]
    [game.core.tags :refer [gain-tags lose-tags tag-prevent]]
    [game.core.to-string :refer [card-str]]
@@ -61,12 +65,15 @@
    [game.core.virus :refer [count-virus-programs number-of-virus-counters]]
    [game.macros :refer [continue-ability effect msg req wait-for]]
    [game.utils :refer :all]
-   [jinteki.utils :refer :all]
-   [game.core.set-aside :refer [set-aside get-set-aside]]
-   [game.core.sabotage :refer [sabotage-ability]]
-   [game.core.mark :refer [identify-mark-ability]]))
+   [jinteki.utils :refer :all]))
 
 ;; Card definitions
+
+(->> (io/file "src/clj/game/cards/hardware/")
+     file-seq
+     (filter #(.isFile ^java.io.File %))
+     (pmap #(load-file (str %)))
+     doall)
 
 (defcard "Acacia"
   {:events [{:event :pre-purge

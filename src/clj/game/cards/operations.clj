@@ -1,5 +1,6 @@
 (ns game.cards.operations
   (:require
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [game.core.access :refer [access-card steal-cost-bonus]]
@@ -8,11 +9,11 @@
    [game.core.board :refer [all-active-installed all-installed
                             get-all-installed get-remote-names get-remotes
                             installable-servers server->zone]]
-   [game.core.card :refer [agenda? asset? can-be-advanced? card-index corp? corp-installable-type?
-                           event? facedown? faceup? get-advancement-requirement
-                           get-card get-counters get-zone hardware? has-subtype? ice? identity? in-discard?
-                           in-hand? installed? is-type? operation? program? resource? rezzed? runner?
-                           upgrade?]]
+   [game.core.card :refer [agenda? asset? can-be-advanced? card-index
+                           corp-installable-type? corp? event? facedown? faceup?
+                           get-advancement-requirement get-card get-counters get-zone hardware? has-subtype?
+                           ice? identity? in-discard? in-hand? installed? is-type? operation? program?
+                           resource? rezzed? runner? upgrade?]]
    [game.core.card-defs :refer [card-def]]
    [game.core.cost-fns :refer [play-cost trash-cost]]
    [game.core.costs :refer [total-available-credits]]
@@ -75,6 +76,13 @@
                                     :effect (effect (trash eid card nil))})))
 
 ;; Card definitions
+
+(->> (io/file "src/clj/game/cards/operations/")
+     file-seq
+     (filter #(.isFile ^java.io.File %))
+     (pmap #(load-file (str %)))
+     doall)
+
 (defcard "24/7 News Cycle"
   {:on-play
    {:req (req (pos? (count (:scored corp))))

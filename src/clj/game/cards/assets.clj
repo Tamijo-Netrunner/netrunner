@@ -1,5 +1,6 @@
 (ns game.cards.assets
   (:require
+   [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -13,8 +14,7 @@
                             installable-servers]]
    [game.core.card :refer [agenda? asset? can-be-advanced? corp? event?
                            faceup? fake-identity? get-advancement-requirement
-                           get-agenda-points get-card get-counters get-title
-                           get-zone hardware? has-subtype? ice? identity?
+                           get-agenda-points get-card get-counters get-zone hardware? has-subtype? ice? identity?
                            in-deck? in-discard? in-hand? in-server? installed? is-type? operation?
                            program? resource? rezzed? runner? upgrade?]]
    [game.core.card-defs :refer [card-def]]
@@ -43,11 +43,10 @@
    [game.core.moving :refer [as-agenda mill move remove-from-currently-drawing
                              swap-cards swap-installed trash trash-cards]]
    [game.core.optional :refer [get-autoresolve set-autoresolve]]
-   [game.core.payment :refer [cost-value]]
+   [game.core.payment :refer [can-pay? cost-value]]
    [game.core.play-instants :refer [play-instant]]
    [game.core.prompts :refer [cancellable]]
    [game.core.props :refer [add-counter add-icon add-prop remove-icon set-prop]]
-   [game.core.payment :refer [can-pay?]]
    [game.core.revealing :refer [reveal]]
    [game.core.rezzing :refer [derez rez]]
    [game.core.say :refer [system-msg]]
@@ -97,6 +96,12 @@
    :effect (req (as-agenda state :runner card 2))})
 
 ;; Card definitions
+
+(->> (io/file "src/clj/game/cards/assets/")
+     file-seq
+     (filter #(.isFile ^java.io.File %))
+     (pmap #(load-file (str %)))
+     doall)
 
 (defcard "Adonis Campaign"
   (campaign 12 3))

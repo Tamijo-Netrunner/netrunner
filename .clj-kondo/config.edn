@@ -103,6 +103,7 @@
      purge-many {:arities {2 {:args [:any :any]}}}
      create-index {:arities {3 {:args [:any :any :any]}
                              4 {:args [:any :any :any :any]}}}}}}
+  :clojure-lsp/unused-public-var {:level :off}
   }
  :lint-as {game.macros-test/before-each clojure.core/let
            reagent.core/with-let clojure.core/let

@@ -1,5 +1,6 @@
 (ns game.cards.resources
   (:require
+   [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.string :as str]
    [game.core.access :refer [access-bonus access-n-cards breach-server steal
@@ -25,9 +26,9 @@
    [game.core.drawing :refer [draw draw-bonus first-time-draw-bonus]]
    [game.core.effects :refer [register-floating-effect]]
    [game.core.eid :refer [complete-with-result effect-completed make-eid]]
-   [game.core.engine :refer [not-used-once? pay register-events
+   [game.core.engine :refer [checkpoint not-used-once? pay register-events
                              register-once register-suppress resolve-ability
-                             trigger-event trigger-event-sync unregister-events unregister-suppress-by-uuid checkpoint]]
+                             trigger-event trigger-event-sync unregister-events unregister-suppress-by-uuid]]
    [game.core.events :refer [event-count first-event?
                              first-installed-trash-own? first-run-event?
                              first-successful-run-on-server? get-turn-damage no-event? second-event? turn-events]]
@@ -44,8 +45,8 @@
                           update-all-icebreakers update-breaker-strength]]
    [game.core.identities :refer [disable-card enable-card]]
    [game.core.initializing :refer [card-init make-card]]
-   [game.core.installing :refer [install-locked? runner-can-install? runner-can-pay-and-install?
-                                 runner-install]]
+   [game.core.installing :refer [install-locked? runner-can-install?
+                                 runner-can-pay-and-install? runner-install]]
    [game.core.link :refer [get-link link+]]
    [game.core.mark :refer [identify-mark-ability]]
    [game.core.memory :refer [available-mu]]
@@ -68,7 +69,7 @@
    [game.core.servers :refer [central->name is-central? is-remote?
                               protecting-same-server? target-server unknown->kw
                               zone->name zones->sorted-names]]
-   [game.core.set-aside :refer [set-aside get-set-aside]]
+   [game.core.set-aside :refer [get-set-aside set-aside]]
    [game.core.shuffling :refer [shuffle!]]
    [game.core.tags :refer [gain-tags lose-tags tag-prevent]]
    [game.core.to-string :refer [card-str]]
@@ -150,6 +151,12 @@
                   :effect (req (break-subroutine! state current-ice (selector (:subroutines current-ice))))}]}))
 
 ;; Card definitions
+
+(->> (io/file "src/clj/game/cards/resources/")
+     file-seq
+     (filter #(.isFile ^java.io.File %))
+     (pmap #(load-file (str %)))
+     doall)
 
 (defcard "Aaron Marrón"
   (let [am {:msg "place 2 power counters on itself"

@@ -1,5 +1,6 @@
 (ns game.cards.ice
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [cond-plus.core :refer [cond+]]
    [game.core.access :refer [access-bonus access-card breach-server max-access]]
@@ -18,7 +19,8 @@
                                   do-brain-damage do-net-damage offer-jack-out
                                   reorder-choice]]
    [game.core.drawing :refer [draw]]
-   [game.core.effects :refer [get-effects register-floating-effect unregister-constant-effects]]
+   [game.core.effects :refer [get-effects register-floating-effect
+                              unregister-constant-effects]]
    [game.core.eid :refer [complete-with-result effect-completed make-eid]]
    [game.core.engine :refer [gather-events pay register-events resolve-ability
                              trigger-event unregister-events]]
@@ -46,7 +48,7 @@
    [game.core.purging :refer [purge]]
    [game.core.revealing :refer [reveal]]
    [game.core.rezzing :refer [derez get-rez-cost rez]]
-   [game.core.runs :refer [bypass-ice continue encounter-ends end-run
+   [game.core.runs :refer [bypass-ice encounter-ends end-run
                            force-ice-encounter get-current-encounter prevent-access
                            redirect-run set-next-phase]]
    [game.core.say :refer [system-msg]]
@@ -536,6 +538,12 @@
                    (gain-bad-publicity :corp eid 1))})
 
 ;; Card definitions
+
+(->> (io/file "src/clj/game/cards/ice/")
+     file-seq
+     (filter #(.isFile ^java.io.File %))
+     (pmap #(load-file (str %)))
+     doall)
 
 (defcard "Anemone"
   {:on-rez {:optional {:prompt "Trash a card from HQ to do 2 net damage?"

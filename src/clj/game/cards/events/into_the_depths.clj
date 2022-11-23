@@ -1,0 +1,134 @@
+(in-ns 'game.cards.events)
+
+(require
+   '[clojure.java.io :as io]
+   '[clojure.set :as set]
+   '[clojure.string :as str]
+   '[game.core.access :refer [access-card breach-server get-only-card-to-access
+                             num-cards-to-access]]
+   '[game.core.actions :refer [get-runnable-zones]]
+   '[game.core.agendas :refer [update-all-agenda-points]]
+   '[game.core.bad-publicity :refer [gain-bad-publicity]]
+   '[game.core.board :refer [all-active-installed all-installed server->zone]]
+   '[game.core.card :refer [agenda? asset? card-index condition-counter? corp?
+                           event? facedown? get-card get-counters
+                           get-nested-host get-title get-zone hardware? has-subtype? ice? in-discard? in-hand?
+                           installed? is-type? operation? program? resource? rezzed? runner? upgrade?]]
+   '[game.core.charge :refer [can-charge charge-ability charge-card]]
+   '[game.core.cost-fns :refer [install-cost play-cost rez-cost]]
+   '[game.core.damage :refer [damage damage-prevent]]
+   '[game.core.def-helpers :refer [breach-access-bonus defcard offer-jack-out
+                                  reorder-choice]]
+   '[game.core.drawing :refer [draw]]
+   '[game.core.effects :refer [register-floating-effect]]
+   '[game.core.eid :refer [complete-with-result effect-completed make-eid
+                          make-result]]
+   '[game.core.engine :refer [not-used-once? pay register-events
+                             resolve-ability trigger-event trigger-event-simult
+                             unregister-events unregister-floating-events]]
+   '[game.core.events :refer [first-event? first-run-event? run-events
+                             turn-events]]
+   '[game.core.expose :refer [expose]]
+   '[game.core.finding :refer [find-cid find-latest]]
+   '[game.core.flags :refer [any-flag-fn? can-rez? can-run-server?
+                            clear-all-flags-for-card! clear-run-flag! clear-turn-flag!
+                            in-corp-scored? prevent-run-on-server register-run-flag! register-turn-flag!
+                            zone-locked?]]
+   '[game.core.gaining :refer [gain gain-clicks gain-credits lose lose-clicks
+                              lose-credits]]
+   '[game.core.hand-size :refer [corp-hand-size+ hand-size]]
+   '[game.core.hosting :refer [host]]
+   '[game.core.ice :refer [get-strength pump pump-all-icebreakers
+                          update-all-ice update-breaker-strength]]
+   '[game.core.identities :refer [disable-card disable-identity enable-card
+                                 enable-identity]]
+   '[game.core.initializing :refer [card-init make-card]]
+   '[game.core.installing :refer [install-as-condition-counter
+                                 runner-can-install? runner-install]]
+   '[game.core.link :refer [get-link]]
+   '[game.core.mark :refer [identify-mark-ability]]
+   '[game.core.memory :refer [available-mu]]
+   '[game.core.moving :refer [as-agenda flip-facedown forfeit mill move
+                             swap-ice trash trash-cards]]
+   '[game.core.payment :refer [can-pay?]]
+   '[game.core.play-instants :refer [play-instant]]
+   '[game.core.prompts :refer [cancellable clear-wait-prompt]]
+   '[game.core.props :refer [add-counter add-icon add-prop remove-icon]]
+   '[game.core.revealing :refer [reveal]]
+   '[game.core.rezzing :refer [derez get-rez-cost rez]]
+   '[game.core.runs :refer [bypass-ice gain-next-run-credits make-run
+                           prevent-access successful-run-replace-breach
+                           total-cards-accessed]]
+   '[game.core.sabotage :refer [sabotage-ability]]
+   '[game.core.say :refer [system-msg]]
+   '[game.core.servers :refer [is-remote? target-server zone->name
+                              zones->sorted-names]]
+   '[game.core.set-aside :refer [get-set-aside set-aside]]
+   '[game.core.shuffling :refer [shuffle! shuffle-into-deck]]
+   '[game.core.tags :refer [gain-tags lose-tags tag-prevent]]
+   '[game.core.to-string :refer [card-str]]
+   '[game.core.toasts :refer [toast]]
+   '[game.core.update :refer [update!]]
+   '[game.core.virus :refer [get-virus-counters]]
+   '[game.macros :refer [continue-ability effect msg req wait-for]]
+   '[game.utils :refer :all]
+   '[jinteki.utils :refer :all]
+   '[jinteki.validator :refer [legal?]])
+
+(defcard "Into the Depths"
+  ;; note - Into the Depths specifies "each time you passed an ICE". This means, unlike bravado,
+  ;; passing the same ice multiple times (ie thimblerig) counts.
+  (let [all [{:msg "gain 4 [Credits]"
+              :async true
+              :effect (effect (gain-credits eid 4))}
+             {:msg "install a program from your stack"
+              :async true
+              :effect (effect (continue-ability
+                                {:prompt "Choose a program to install"
+                                 :msg (req (if (not= target "No install")
+                                             (str "install " (:title target))
+                                             (str "shuffle their Stack")))
+                                 :choices (req (conj (filter #(can-pay? state side
+                                                                        (assoc eid :source card :source-type :runner-install)
+                                                                        % nil [:credit (install-cost state side %)])
+                                                             (vec (sort-by :title (filter program? (:deck runner)))))
+                                                     "No install"))
+                                 :async true
+                                 :effect (req (trigger-event state side :searched-stack nil)
+                                              (shuffle! state side :deck)
+                                              (if (not= target "No install")
+                                                (runner-install state side (assoc eid :source card :source-type :runner-install) target nil)
+                                                (effect-completed state side eid)))}
+                                card nil))}
+             {:async true
+              :effect (effect (continue-ability (charge-ability state side eid card) card nil))
+              :msg "charge a card"}]
+        choice (fn choice [abis rem]
+                 {:prompt "Choose an ability to resolve"
+                  :choices (map #(capitalize (:msg %)) abis)
+                  :async true
+                  :effect (req (let [chosen (some #(when (= target (capitalize (:msg %))) %) abis)]
+                                 (wait-for
+                                   (resolve-ability state side chosen card nil)
+                                   (if (< 1 rem)
+                                     (continue-ability state side (choice (remove-once #(= % chosen) abis) (dec rem)) card nil)
+                                     (effect-completed state side eid)))))})]
+    {:makes-run true
+     :on-play {:prompt "Choose a server"
+               :choices (req runnable-servers)
+               :async true
+               :effect (effect (register-events
+                                 card
+                                 [{:event :pass-ice
+                                   :duration :end-of-run
+                                   :effect (effect (update! (update-in (get-card state card) [:special :how-deep-are-we] (fnil inc 0))))}])
+                               (make-run eid target card))}
+     :events [{:event :successful-run
+               :interactive (req true)
+               :async true
+               :req (req this-card-run)
+               :effect (req (let [ice-passed (get-in card [:special :how-deep-are-we])
+                                  num-choices (if (nil? ice-passed) 0 (min 3 ice-passed))]
+                              (if (< 0 num-choices)
+                                (continue-ability state side (choice all num-choices) card nil)
+                                (effect-completed state side eid))))}]}))

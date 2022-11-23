@@ -1,5 +1,6 @@
 (ns game.cards.identities
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [game.core.access :refer [access-bonus access-cost-bonus access-non-agenda]]
    [game.core.bad-publicity :refer [gain-bad-publicity]]
@@ -87,6 +88,12 @@
     (= fc best-faction)))
 
 ;; Card definitions
+
+(->> (io/file "src/clj/game/cards/identities/")
+     file-seq
+     (filter #(.isFile ^java.io.File %))
+     (pmap #(load-file (str %)))
+     doall)
 
 (defcard "419: Amoral Scammer"
   {:events [{:event :corp-install

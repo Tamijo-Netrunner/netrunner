@@ -1,10 +1,10 @@
 (ns game.cards.upgrades
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [cond-plus.core :refer [cond+]]
-   [game.core.access :refer [access-bonus set-only-card-to-access
-                             installed-access-trigger
-                             steal-cost-bonus]]
+   [game.core.access :refer [access-bonus installed-access-trigger
+                             set-only-card-to-access steal-cost-bonus]]
    [game.core.bad-publicity :refer [lose-bad-publicity]]
    [game.core.board :refer [all-active-installed all-installed card->server
                             get-remotes server->zone server-list]]
@@ -60,6 +60,12 @@
    [jinteki.utils :refer :all]))
 
 ;; Card definitions
+
+(->> (io/file "src/clj/game/cards/upgrades/")
+     file-seq
+     (filter #(.isFile ^java.io.File %))
+     (pmap #(load-file (str %)))
+     doall)
 
 (defcard "Akitaro Watanabe"
   {:constant-effects [{:type :rez-cost

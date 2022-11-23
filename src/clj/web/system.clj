@@ -1,5 +1,10 @@
 (ns web.system
   (:require
+   game.core
+   jinteki.cards
+   jinteki.utils
+   jinteki.validator)
+  (:require
    [aero.core :as aero]
    [cljc.java-time.local-date :as ld]
    [clojure.java.io :as io]

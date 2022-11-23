@@ -34,6 +34,7 @@ services:
     entrypoint: npm run cljs:watch
     volumes:
       - "./data:/usr/src/app/data"
+      - "./dev:/usr/src/app/dev"
       - "./docs:/usr/src/app/docs"
       - "./resources:/usr/src/app/resources"
       - "./src:/usr/src/app/src"

@@ -1,5 +1,6 @@
 (ns game.cards.agendas
   (:require
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [game.core.access :refer [steal-cost-bonus]]
@@ -81,6 +82,12 @@
                          :value 1}]}))
 
 ;; Card definitions
+
+(->> (io/file "src/clj/game/cards/agendas/")
+     file-seq
+     (filter #(.isFile ^java.io.File %))
+     (pmap #(load-file (str %)))
+     doall)
 
 (defcard "15 Minutes"
   {:abilities [{:cost [:click 1]

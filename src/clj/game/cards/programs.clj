@@ -1,14 +1,14 @@
 (ns game.cards.programs
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [game.core.access :refer [access-bonus max-access]]
    [game.core.board :refer [all-active all-active-installed all-installed
                             card->server server->zone]]
    [game.core.card :refer [agenda? asset? card-index corp? facedown?
                            get-advancement-requirement get-card get-counters
-                           get-nested-host get-title get-zone hardware? has-subtype?
-                           ice? in-discard? in-hand? installed?
-                           program? resource? rezzed? runner?]]
+                           get-nested-host get-title get-zone hardware? has-subtype? ice? in-discard? in-hand?
+                           installed? program? resource? rezzed? runner?]]
    [game.core.card-defs :refer [card-def]]
    [game.core.cost-fns :refer [all-stealth install-cost min-stealth rez-cost]]
    [game.core.costs :refer [total-available-credits]]
@@ -25,7 +25,8 @@
                              first-successful-run-on-server? turn-events]]
    [game.core.expose :refer [expose]]
    [game.core.finding :refer [find-cid]]
-   [game.core.flags :refer [can-host? card-flag? lock-zone release-zone zone-locked?]]
+   [game.core.flags :refer [can-host? card-flag? lock-zone release-zone
+                            zone-locked?]]
    [game.core.gaining :refer [gain-clicks gain-credits lose-credits]]
    [game.core.hosting :refer [host]]
    [game.core.ice :refer [all-subs-broken-by-card? all-subs-broken?
@@ -363,6 +364,12 @@
                                                   (strength-pump 2 3)]})))
 
 ;; Card definitions
+
+(->> (io/file "src/clj/game/cards/programs/")
+     file-seq
+     (filter #(.isFile ^java.io.File %))
+     (pmap #(load-file (str %)))
+     doall)
 
 (defcard "Abagnale"
   (trash-to-bypass (break-sub 1 1 "Code Gate")

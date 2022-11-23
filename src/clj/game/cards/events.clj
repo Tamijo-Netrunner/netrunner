@@ -1,5 +1,6 @@
 (ns game.cards.events
   (:require
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [game.core.access :refer [access-card breach-server get-only-card-to-access
@@ -30,7 +31,8 @@
    [game.core.finding :refer [find-cid find-latest]]
    [game.core.flags :refer [any-flag-fn? can-rez? can-run-server?
                             clear-all-flags-for-card! clear-run-flag! clear-turn-flag!
-                            in-corp-scored? prevent-run-on-server register-run-flag! register-turn-flag! zone-locked?]]
+                            in-corp-scored? prevent-run-on-server register-run-flag! register-turn-flag!
+                            zone-locked?]]
    [game.core.gaining :refer [gain gain-clicks gain-credits lose lose-clicks
                               lose-credits]]
    [game.core.hand-size :refer [corp-hand-size+ hand-size]]
@@ -90,6 +92,12 @@
              :effect (effect (trash eid target {:cause-card card}))}]})
 
 ;; Card definitions
+
+(->> (io/file "src/clj/game/cards/events/")
+     file-seq
+     (filter #(.isFile ^java.io.File %))
+     (pmap #(load-file (str %)))
+     doall)
 
 (defcard "Account Siphon"
   {:makes-run true
